@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Hipotecario Cofinavit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --rojo: #CC0000; --rojo-suave: #f5e6e6;
+    --infonavit: #E8350A; --infonavit-suave: #fdf0ed;
+    --gris-oscuro: #1a1a1a; --gris-medio: #555; --gris-claro: #f4f4f4;
+    --borde: #e0e0e0; --verde: #1a7a4a; --verde-suave: #e6f4ee; --blanco: #fff;
+  }
+  body { font-family: 'Inter', sans-serif; background: #f0f0f0; color: var(--gris-oscuro); padding: 24px 16px; }
+  .container { max-width: 920px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { font-size: 0.85rem; color: var(--gris-medio); margin-bottom: 24px; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: var(--blanco); border-radius: 12px; padding: 16px; border-left: 4px solid var(--borde); }
+  .card.scotia { border-left-color: var(--rojo); }
+  .card.infonavit { border-left-color: var(--infonavit); }
+  .card.total { border-left-color: var(--verde); }
+  .card-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gris-medio); margin-bottom: 8px; }
+  .card.scotia .card-label { color: var(--rojo); }
+  .card.infonavit .card-label { color: var(--infonavit); }
+  .card.total .card-label { color: var(--verde); }
+  .card-monto { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 600; margin-bottom: 6px; }
+  .card-detail { font-size: 0.75rem; color: var(--gris-medio); line-height: 1.5; }
+
+  .simulador { background: var(--blanco); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 2px solid var(--verde); }
+  .sim-title { font-size: 0.95rem; font-weight: 700; color: var(--verde); margin-bottom: 4px; }
+  .sim-sub { font-size: 0.78rem; color: var(--gris-medio); margin-bottom: 16px; }
+  .sim-inputs { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .sim-input-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 180px; }
+  .sim-input-group label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gris-medio); }
+  .input-wrap { position: relative; }
+  .input-wrap span.prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--gris-medio); }
+  .sim-input-group input, .sim-input-group select {
+    width: 100%; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+    border: 1px solid var(--borde); border-radius: 8px; color: var(--gris-oscuro); background: var(--blanco);
+  }
+  .sim-input-group input.with-prefix { padding-left: 28px; }
+  .sim-input-group input:focus, .sim-input-group select:focus { outline: 2px solid var(--verde); border-color: transparent; }
+  .sim-input-hint { font-size: 0.68rem; color: #999; }
+
+  /* ABONOS PROGRAMADOS */
+  .abonos-section { border-top: 1px dashed var(--borde); padding-top: 16px; margin-bottom: 16px; }
+  .abonos-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; }
+  .abono-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .abono-form .sim-input-group { flex: 1; min-width: 140px; }
+  .btn-add {
+    padding: 10px 18px; background: var(--verde); color: var(--blanco); border: none;
+    border-radius: 8px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .btn-add:hover { background: #145c38; }
+  .abonos-list { display: flex; flex-direction: column; gap: 6px; }
+  .abono-chip {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--verde-suave); border-radius: 8px; padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  .abono-chip .chip-info { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--verde); }
+  .abono-chip .chip-fecha { font-size: 0.72rem; color: var(--gris-medio); margin-left: 8px; font-family: 'Inter', sans-serif; font-weight: 400; }
+  .btn-remove {
+    background: none; border: none; color: #b04040; font-size: 1rem; cursor: pointer;
+    padding: 2px 8px; border-radius: 4px; font-weight: 700;
+  }
+  .btn-remove:hover { background: #f5e0e0; }
+  .abonos-empty { font-size: 0.75rem; color: #aaa; font-style: italic; padding: 4px 0; }
+
+  .sim-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .sim-result { background: var(--verde-suave); border-radius: 10px; padding: 14px; text-align: center; }
+  .sim-result.neutral { background: var(--gris-claro); }
+  .sim-result-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris-medio); margin-bottom: 6px; }
+  .sim-result-value { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 600; color: var(--verde); }
+  .sim-result.neutral .sim-result-value { color: var(--gris-oscuro); }
+  .sim-result-detail { font-size: 0.68rem; color: var(--gris-medio); margin-top: 4px; }
+
+  .controls { background: var(--blanco); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  .control-group { display: flex; flex-direction: column; gap: 4px; }
+  .control-group label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris-medio); }
+  .btn-group { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--borde); }
+  .btn-group button { padding: 7px 14px; font-size: 0.8rem; font-family: 'Inter', sans-serif; font-weight: 500; border: none; background: var(--blanco); color: var(--gris-medio); cursor: pointer; border-right: 1px solid var(--borde); }
+  .btn-group button:last-child { border-right: none; }
+  .btn-group button.active { background: var(--gris-oscuro); color: var(--blanco); }
+
+  .table-wrap { background: var(--blanco); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+  .table-header { padding: 14px 20px; border-bottom: 1px solid var(--borde); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .table-title { font-size: 0.85rem; font-weight: 600; }
+  .badge { font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; font-family: 'JetBrains Mono', monospace; }
+  .badge.scotia { background: var(--rojo-suave); color: var(--rojo); }
+  .badge.infonavit { background: var(--infonavit-suave); color: var(--infonavit); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  thead th { background: var(--gris-claro); padding: 10px 14px; text-align: right; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gris-medio); white-space: nowrap; }
+  thead th:first-child { text-align: left; }
+  tbody tr { border-bottom: 1px solid #f0f0f0; }
+  tbody tr:hover { background: var(--gris-claro); }
+  tbody tr.year-row { background: #fafafa; }
+  tbody tr.year-row td { font-weight: 600; font-size: 0.75rem; color: var(--gris-oscuro); }
+  tbody tr.abono-row { background: var(--verde-suave); }
+  td { padding: 9px 14px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--gris-medio); white-space: nowrap; }
+  td:first-child { text-align: left; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--gris-oscuro); }
+  td.interes { color: #b04040; }
+  td.capital { color: #2a6a3a; }
+  td.saldo { color: var(--gris-oscuro); font-weight: 500; }
+  td.extra-col { color: var(--verde); font-weight: 600; }
+
+  .nota { background: #fffbeb; border: 1px solid #f0d060; border-radius: 10px; padding: 12px 16px; font-size: 0.76rem; color: #7a6020; line-height: 1.6; }
+  .nota strong { color: #5a4010; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Simulador Hipotecario Cofinavit</h1>
+  <p class="subtitle">Crédito $1,161,000 · Scotiabank + Infonavit · Inicio estimado: agosto 2026</p>
+
+  <div class="cards">
+    <div class="card scotia">
+      <div class="card-label">Scotiabank</div>
+      <div class="card-monto">$12,965/mes</div>
+      <div class="card-detail">Crédito: $1,161,000*<br>Tasa: 10.75% fija<br>Plazo: 20 años<br><em>*ajustado al precio del depa</em></div>
+    </div>
+    <div class="card infonavit">
+      <div class="card-label">Infonavit</div>
+      <div class="card-monto">$1,295/mes</div>
+      <div class="card-detail">Crédito: $135,517<br>Tasa: 10.45% fija<br>Descuento nómina automático</div>
+    </div>
+    <div class="card total">
+      <div class="card-label">Sin abonos pagarías</div>
+      <div class="card-monto">$2,828,834</div>
+      <div class="card-detail">$1,667,834 solo de intereses<br>en 20 años 😱</div>
+    </div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="simulador">
+    <div class="sim-title">💰 Simulador de abonos a capital (Scotiabank)</div>
+    <div class="sim-sub">Combina abonos recurrentes con abonos programados en fechas específicas. Todo va 100% a capital, sin penalización.</div>
+
+    <div class="sim-inputs">
+      <div class="sim-input-group">
+        <label>Abono extra mensual fijo</label>
+        <div class="input-wrap"><span class="prefix">$</span><input class="with-prefix" type="number" id="extra-mensual" value="0" min="0" step="500" oninput="renderTodo()"></div>
+        <div class="sim-input-hint">Cada mes, constante</div>
+      </div>
+      <div class="sim-input-group">
+        <label>Abono anual recurrente</label>
+        <div class="input-wrap"><span class="prefix">$</span><input class="with-prefix" type="number" id="extra-anual" value="0" min="0" step="5000" oninput="renderTodo()"></div>
+        <div class="sim-input-hint">Ej. aguinaldo, cada diciembre</div>
+      </div>
+    </div>
+
+    <!-- ABONOS PROGRAMADOS -->
+    <div class="abonos-section">
+      <div class="abonos-title">📅 Abonos programados en fechas específicas</div>
+      <div class="abono-form">
+        <div class="sim-input-group">
+          <label>Monto</label>
+          <div class="input-wrap"><span class="prefix">$</span><input class="with-prefix" type="number" id="abono-monto" value="50000" min="1000" step="5000"></div>
+        </div>
+        <div class="sim-input-group">
+          <label>Mes</label>
+          <select id="abono-mes-nombre">
+            <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+            <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12" selected>Diciembre</option>
+          </select>
+        </div>
+        <div class="sim-input-group">
+          <label>Año</label>
+          <select id="abono-anio"></select>
+        </div>
+        <button class="btn-add" onclick="agregarAbono()">+ Agregar</button>
+      </div>
+      <div class="abonos-list" id="abonos-list">
+        <div class="abonos-empty">Sin abonos programados todavía. Agrega uno arriba ☝️</div>
+      </div>
+    </div>
+
+    <div class="sim-results">
+      <div class="sim-result neutral">
+        <div class="sim-result-label">Plazo original</div>
+        <div class="sim-result-value">20 años</div>
+        <div class="sim-result-detail">240 meses</div>
+      </div>
+      <div class="sim-result">
+        <div class="sim-result-label">Nuevo plazo</div>
+        <div class="sim-result-value" id="res-plazo">20 años</div>
+        <div class="sim-result-detail" id="res-plazo-detail">240 meses</div>
+      </div>
+      <div class="sim-result">
+        <div class="sim-result-label">Terminas de pagar</div>
+        <div class="sim-result-value" id="res-fecha">jul 2046</div>
+        <div class="sim-result-detail" id="res-tiempo">0 meses antes</div>
+      </div>
+      <div class="sim-result">
+        <div class="sim-result-label">Intereses ahorrados</div>
+        <div class="sim-result-value" id="res-intereses">$0</div>
+        <div class="sim-result-detail">vs pago normal</div>
+      </div>
+      <div class="sim-result">
+        <div class="sim-result-label">Total abonado extra</div>
+        <div class="sim-result-value" id="res-abonado">$0</div>
+        <div class="sim-result-detail" id="res-roi">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Ver crédito</label>
+      <div class="btn-group">
+        <button class="active" id="btn-scotia" onclick="setCredito('scotia')">Scotiabank</button>
+        <button id="btn-infonavit" onclick="setCredito('infonavit')">Infonavit</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Agrupar por</label>
+      <div class="btn-group">
+        <button class="active" id="btn-anual" onclick="setVista('anual')">Año</button>
+        <button id="btn-mensual" onclick="setVista('mensual')">Mes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title" id="tabla-titulo">Amortización Scotiabank</span>
+      <span class="badge scotia" id="tabla-badge">10.75% · 20 años</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Mensualidad</th>
+            <th id="th-extra" style="display:none;">Abono extra</th>
+            <th>Interés</th>
+            <th>Capital</th>
+            <th>Saldo</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="nota">
+    <strong>⚠️ Notas:</strong> Simulación estimada. Crédito Scotiabank calculado sobre <strong>$1,161,000</strong> con inicio en <strong>agosto 2026</strong>. Mensualidad de capital+interés: ~$11,787 (tu pago de $12,965 incluye ~$1,178 de seguros que se pagan aparte mientras el crédito viva). Recuerda: al hacer cada abono en ventanilla o ScotiaWeb debes <strong>especificar "anticipo a capital"</strong> y estar al corriente en tu mensualidad. La tasa VALORA puede bajar con pagos puntuales, mejorando aún más estos números.
+  </div>
+
+</div>
+
+<script>
+  const INICIO_ANIO = 2026, INICIO_MES = 8; // agosto 2026
+  const MESES_NOMBRES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  const SCOTIA = { monto: 1161000, tasa: 10.75, meses: 240, label: 'Scotiabank', badgeClass: 'scotia', badgeText: '10.75% \u00b7 20 a\u00f1os' };
+  const INFONAVIT = { monto: 135517, tasa: 10.45, meses: 120, label: 'Infonavit', badgeClass: 'infonavit', badgeText: '10.45% \u00b7 10 a\u00f1os est.' };
+
+  let creditoActual = SCOTIA;
+  let vistaActual = 'anual';
+  let abonosProgramados = []; // {mesCredito, monto, etiqueta}
+
+  // llenar años
+  const selAnio = document.getElementById('abono-anio');
+  for (let a = 2026; a <= 2046; a++) {
+    const o = document.createElement('option');
+    o.value = a; o.textContent = a;
+    if (a === 2026) o.selected = true;
+    selAnio.appendChild(o);
+  }
+
+  function fechaAMesCredito(anio, mes) {
+    return (anio - INICIO_ANIO) * 12 + (mes - INICIO_MES) + 1;
+  }
+  function mesCreditoAFecha(m) {
+    const total = INICIO_MES - 1 + (m - 1);
+    const anio = INICIO_ANIO + Math.floor(total / 12);
+    const mes = total % 12;
+    return MESES_NOMBRES[mes] + ' ' + anio;
+  }
+
+  function agregarAbono() {
+    const monto = parseFloat(document.getElementById('abono-monto').value) || 0;
+    const mes = parseInt(document.getElementById('abono-mes-nombre').value);
+    const anio = parseInt(document.getElementById('abono-anio').value);
+    if (monto <= 0) return;
+    const mesCredito = fechaAMesCredito(anio, mes);
+    if (mesCredito < 1) { alert('Esa fecha es antes del inicio del cr\u00e9dito (ago 2026)'); return; }
+    if (mesCredito > 240) { alert('Esa fecha est\u00e1 fuera del plazo de 20 a\u00f1os'); return; }
+    const nombreMes = document.getElementById('abono-mes-nombre').selectedOptions[0].textContent;
+    abonosProgramados.push({ mesCredito, monto, etiqueta: nombreMes + ' ' + anio });
+    abonosProgramados.sort((a, b) => a.mesCredito - b.mesCredito);
+    renderAbonosList();
+    renderTodo();
+  }
+
+  function quitarAbono(idx) {
+    abonosProgramados.splice(idx, 1);
+    renderAbonosList();
+    renderTodo();
+  }
+
+  function renderAbonosList() {
+    const cont = document.getElementById('abonos-list');
+    if (abonosProgramados.length === 0) {
+      cont.innerHTML = '<div class="abonos-empty">Sin abonos programados todav\u00eda. Agrega uno arriba \u261d\ufe0f</div>';
+      return;
+    }
+    cont.innerHTML = abonosProgramados.map((a, i) =>
+      '<div class="abono-chip"><div><span class="chip-info">' + fmt(a.monto) + '</span>' +
+      '<span class="chip-fecha">' + a.etiqueta + ' (mes ' + a.mesCredito + ' del cr\u00e9dito)</span></div>' +
+      '<button class="btn-remove" onclick="quitarAbono(' + i + ')" title="Quitar">\u00d7</button></div>'
+    ).join('');
+  }
+
+  function getExtras() {
+    return {
+      mensual: parseFloat(document.getElementById('extra-mensual').value) || 0,
+      anual: parseFloat(document.getElementById('extra-anual').value) || 0
+    };
+  }
+
+  function calcular(monto, tasaAnual, totalMeses, extraMensual = 0, extraAnual = 0, programados = []) {
+    const i = tasaAnual / 100 / 12;
+    const mensualidad = monto * (i * Math.pow(1 + i, totalMeses)) / (Math.pow(1 + i, totalMeses) - 1);
+    const progMap = {};
+    programados.forEach(p => { progMap[p.mesCredito] = (progMap[p.mesCredito] || 0) + p.monto; });
+    let saldo = monto;
+    const filas = [];
+    let m = 0;
+    while (saldo > 0.01 && m < totalMeses * 2) {
+      m++;
+      const interes = saldo * i;
+      let capital = mensualidad - interes;
+      let extra = extraMensual;
+      // diciembre real: mes del crédito donde cae diciembre
+      const mesCalendario = ((INICIO_MES - 1 + (m - 1)) % 12) + 1;
+      if (mesCalendario === 12) extra += extraAnual;
+      if (progMap[m]) extra += progMap[m];
+      if (capital > saldo) { capital = saldo; extra = 0; }
+      else if (capital + extra > saldo) { extra = saldo - capital; }
+      saldo -= (capital + extra);
+      filas.push({ mes: m, anio: Math.ceil(m / 12), mensualidad: interes + capital, extra, interes, capital: capital + extra, saldo: Math.max(0, saldo), esProgramado: !!progMap[m] });
+      if (saldo <= 0.01) break;
+    }
+    return filas;
+  }
+
+  function fmt(n) { return '$' + Math.round(n).toLocaleString('es-MX'); }
+
+  function renderSimulador() {
+    const { mensual, anual } = getExtras();
+    const base = calcular(SCOTIA.monto, SCOTIA.tasa, SCOTIA.meses);
+    const con = calcular(SCOTIA.monto, SCOTIA.tasa, SCOTIA.meses, mensual, anual, abonosProgramados);
+
+    const intBase = base.reduce((s, f) => s + f.interes, 0);
+    const intCon = con.reduce((s, f) => s + f.interes, 0);
+    const extraTotal = con.reduce((s, f) => s + f.extra, 0);
+    const mesesNuevos = con.length;
+    const ahorrados = base.length - mesesNuevos;
+    const ahorroInt = intBase - intCon;
+
+    const a = Math.floor(mesesNuevos / 12), mm = mesesNuevos % 12;
+    document.getElementById('res-plazo').textContent = mm > 0 ? a + 'a ' + mm + 'm' : a + ' a\u00f1os';
+    document.getElementById('res-plazo-detail').textContent = mesesNuevos + ' meses';
+    document.getElementById('res-fecha').textContent = mesCreditoAFecha(mesesNuevos);
+    const aa = Math.floor(ahorrados / 12), amm = ahorrados % 12;
+    document.getElementById('res-tiempo').textContent = (aa > 0 ? aa + 'a ' + amm + 'm' : ahorrados + ' meses') + ' antes';
+    document.getElementById('res-intereses').textContent = fmt(ahorroInt);
+    document.getElementById('res-abonado').textContent = fmt(extraTotal);
+    document.getElementById('res-roi').textContent = extraTotal > 0 ? 'ahorras ' + (ahorroInt / extraTotal).toFixed(2) + 'x lo abonado' : '\u2014';
+  }
+
+  function renderTabla() {
+    const { mensual, anual } = getExtras();
+    const usaExtras = creditoActual === SCOTIA && (mensual > 0 || anual > 0 || abonosProgramados.length > 0);
+    const filas = usaExtras
+      ? calcular(creditoActual.monto, creditoActual.tasa, creditoActual.meses, mensual, anual, abonosProgramados)
+      : calcular(creditoActual.monto, creditoActual.tasa, creditoActual.meses);
+
+    document.getElementById('th-extra').style.display = usaExtras ? '' : 'none';
+    const tbody = document.getElementById('tabla-body');
+    let html = '';
+
+    if (vistaActual === 'anual') {
+      const totalAnios = Math.ceil(filas.length / 12);
+      for (let a = 1; a <= totalAnios; a++) {
+        const g = filas.filter(f => f.anio === a);
+        if (!g.length) continue;
+        html += '<tr class="year-row"><td>A\u00f1o ' + a + ' <span style="font-weight:400;font-size:0.68rem;color:#999">(' + mesCreditoAFecha(g[0].mes).split(' ')[1] + ')</span></td><td>' + fmt(g.reduce((s, f) => s + f.mensualidad, 0)) + '</td>' +
+          (usaExtras ? '<td class="extra-col">' + fmt(g.reduce((s, f) => s + f.extra, 0)) + '</td>' : '') +
+          '<td class="interes">' + fmt(g.reduce((s, f) => s + f.interes, 0)) + '</td><td class="capital">' + fmt(g.reduce((s, f) => s + f.capital, 0)) + '</td><td class="saldo">' + fmt(g[g.length - 1].saldo) + '</td></tr>';
+      }
+    } else {
+      filas.forEach(f => {
+        html += '<tr' + (f.esProgramado ? ' class="abono-row"' : '') + '><td>' + mesCreditoAFecha(f.mes) + (f.esProgramado ? ' \ud83d\udcb0' : '') + '</td><td>' + fmt(f.mensualidad) + '</td>' +
+          (usaExtras ? '<td class="extra-col">' + (f.extra > 0 ? fmt(f.extra) : '\u2014') + '</td>' : '') +
+          '<td class="interes">' + fmt(f.interes) + '</td><td class="capital">' + fmt(f.capital) + '</td><td class="saldo">' + fmt(f.saldo) + '</td></tr>';
+      });
+    }
+
+    tbody.innerHTML = html;
+    document.getElementById('tabla-titulo').textContent = 'Amortizaci\u00f3n ' + creditoActual.label;
+    const badge = document.getElementById('tabla-badge');
+    badge.className = 'badge ' + creditoActual.badgeClass;
+    badge.textContent = creditoActual.badgeText;
+  }
+
+  function renderTodo() { renderSimulador(); renderTabla(); }
+  function setCredito(t) {
+    creditoActual = t === 'scotia' ? SCOTIA : INFONAVIT;
+    document.getElementById('btn-scotia').classList.toggle('active', t === 'scotia');
+    document.getElementById('btn-infonavit').classList.toggle('active', t === 'infonavit');
+    renderTabla();
+  }
+  function setVista(v) {
+    vistaActual = v;
+    document.getElementById('btn-anual').classList.toggle('active', v === 'anual');
+    document.getElementById('btn-mensual').classList.toggle('active', v === 'mensual');
+    renderTabla();
+  }
+
+  renderTodo();
+</script>
+</body>
+</html>
